@@ -5,3 +5,4 @@ requests
 googlesearch-python
 gunicorn
 openai
+python-dotenv
