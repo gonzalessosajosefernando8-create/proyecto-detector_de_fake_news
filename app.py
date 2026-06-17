@@ -23,17 +23,16 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def analizar_con_inteligencia_artificial(url, texto_usuario, pregunta):
-    """Usa OpenAI y procesa de forma flexible la respuesta para asegurar
-
-    que la cita APA y los términos de búsqueda se extraigan mediante expresiones
-    regulares robustas.
+    """
+    Usa OpenAI y procesa de forma flexible la respuesta para asegurar
+    que la cita APA y los términos de búsqueda se extraigan pase lo que pase.
     """
     ano_actual = datetime.now().year
 
     prompt_sistema = (
         "Eres el núcleo analítico avanzado del S.I.F.D. Tu tarea es evaluar con un criterio "
         "científico, académico y metodológico agudo el fragmento de texto y la URL provistos. "
-        "Sé explícito y detallado en tu análisis."
+        "Sé explícito y detailed en tu análisis."
     )
 
     prompt_usuario = f"""
@@ -42,10 +41,10 @@ def analizar_con_inteligencia_artificial(url, texto_usuario, pregunta):
     - Fragmento del contenido: "{texto_usuario}"
     - Inquietud del investigador: "{pregunta}"
     
-    Genera tu respuesta respetando estrictamente la estructura de estas 4 etiquetas. No uses negritas en los títulos de las etiquetas y pon cada bloque separado:
+    Genera tu respuesta respetando estrictamente la estructura de estas 4 etiquetas. No uses negritas en los títulos de las etiquetas:
     
     [ESTADO]
-    Determina el nivel de confianza de forma corta (Ej: NIVEL DE CONFIANZA MEDIO / DIVULGACIÓN INDEPENDIENTE o COMPLETADA o CERTIFICADA).
+    Determina el nivel de confianza de forma corta (Ej: NIVEL DE CONFIANZA MEDIO / DIVULGACIÓN INDEPENDIENTE).
     
     [RESOLUCION]
     Escribe mínimo dos párrafos detallados analizando de forma científica los datos del texto.
@@ -62,46 +61,37 @@ def analizar_con_inteligencia_artificial(url, texto_usuario, pregunta):
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": prompt_sistema},
-                {"role": "user", "content": prompt_usuario},
+                {"role": "user", "content": prompt_usuario}
             ],
-            temperature=0.3,
+            temperature=0.3
         )
 
         respuesta_ia = response.choices[0].message.content
         print(
-            f"\n--- RESPUESTA BRUTA DE LA IA ---\n{respuesta_ia}\n--------------------------------\n"
-        )
+            f"\n--- RESPUESTA BRUTA DE LA IA ---\n{respuesta_ia}\n--------------------------------\n")
 
-        # 🔍 EXTRACCIÓN ROBUSTA CON EXPRESIONES REGULARES (Evita rupturas por saltos de línea)
+        # 🔍 EXTRACCIÓN AVANZADA: Captura bloques multilínea sin romperse por saltos de página
         def extraer_bloque(etiqueta, texto, por_defecto=""):
-            # Este patrón busca el tag sin importar mayúsculas/minúsculas y captura todo hasta el siguiente tag o fin de texto
             patron = rf"\[{etiqueta}\]\s*(.*?)(?=\s*\[(?:ESTADO|RESOLUCION|TERMINOS_BUSQUEDA|CITA)\]|$)"
             match = re.search(patron, texto, re.DOTALL | re.IGNORECASE)
             if match:
                 res = match.group(1).strip()
-                # Limpiar posibles flechas decorativas "->" o formatos markdown residuales
+                # Limpiar flechas decorativas si existieran
                 res = re.sub(r"^->\s*", "", res)
-                return res.replace("**", "").replace("__", "")
+                return res.replace("**", "").replace("__", "").strip()
             return por_defecto
 
         estado = extraer_bloque("ESTADO", respuesta_ia,
                                 "EVALUACIÓN COMPLETADA")
         terminos = extraer_bloque("TERMINOS_BUSQUEDA", respuesta_ia, "ciencia")
         cita_apa = extraer_bloque(
-            "CITA",
-            respuesta_ia,
-            f"Fuente Digitalizada. ({ano_actual}). Extracción S.I.F.D.",
-        )
+            "CITA", respuesta_ia, f"Fuente Digitalizada. ({ano_actual}). Extracción S.I.F.D.")
 
-        # Procesar la resolución separando los párrafos por saltos de línea para inyectar los <br><br>
+        # Procesar los párrafos de la resolución de forma limpia
         resolucion_cruda = extraer_bloque("RESOLUCION", respuesta_ia, "")
         if resolucion_cruda:
-            # Filtramos líneas vacías y las unimos de forma limpia
-            lineas_res = [
-                linea.strip()
-                for linea in resolucion_cruda.split("\n")
-                if linea.strip()
-            ]
+            lineas_res = [linea.strip()
+                          for linea in resolucion_cruda.split('\n') if linea.strip()]
             resolucion = "<br><br>".join(lineas_res)
         else:
             resolucion = "Análisis procesado correctamente."
@@ -110,12 +100,7 @@ def analizar_con_inteligencia_artificial(url, texto_usuario, pregunta):
 
     except Exception as e:
         print(f"❌ Error en OpenAI: {e}")
-        return (
-            "CONFIANZA LIMITADA",
-            f"Error de conexión local. Detalle: {e}",
-            "ciencia",
-            f"Consulta Digital. ({ano_actual}).",
-        )
+        return "CONFIANZA LIMITADA", f"Error de conexión local. Detalle: {e}", "ciencia", f"Consulta Digital. ({ano_actual})."
 
 
 def procesar_consulta_dinamica(
