@@ -6,3 +6,4 @@ googlesearch-python
 gunicorn
 openai 
 python-dotenv
+flask-cors
