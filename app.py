@@ -70,8 +70,7 @@ REGLAS CRÍTICAS DE ESTILO:
         )
 
         respuesta_ia = response.choices[0].message.content
-        print(
-            f"\n--- RESPUESTA BRUTA DE LA IA ---\n{respuesta_ia}\n--------------------------------\n")
+        print(f"\n--- RESPUESTA BRUTA DE LA IA ---\n{respuesta_ia}\n--------------------------------\n")
 
         def extraer_bloque(etiqueta, texto, por_defecto=""):
             patron = rf"\[{etiqueta}\]\s*(.*?)(?=\s*\[(?:ESTADO|RESOLUCION|TERMINOS_BUSQUEDA|CITA)\]|$)"
@@ -82,16 +81,13 @@ REGLAS CRÍTICAS DE ESTILO:
                 return res.replace("**", "").replace("__", "").strip()
             return por_defecto
 
-        estado = extraer_bloque("ESTADO", respuesta_ia,
-                                "EVALUACIÓN COMPLETADA")
+        estado = extraer_bloque("ESTADO", respuesta_ia, "EVALUACIÓN COMPLETADA")
         terminos = extraer_bloque("TERMINOS_BUSQUEDA", respuesta_ia, "ciencia")
-        cita_apa = extraer_bloque(
-            "CITA", respuesta_ia, f"Fuente Digitalizada. ({ano_actual}). Extracción S.I.F.D.")
+        cita_apa = extraer_bloque("CITA", respuesta_ia, f"Fuente Digitalizada. ({ano_actual}). Extracción S.I.F.D.")
 
         resolucion_cruda = extraer_bloque("RESOLUCION", respuesta_ia, "")
         if resolucion_cruda:
-            lineas_res = [linea.strip()
-                          for linea in resolucion_cruda.split('\n') if linea.strip()]
+            lineas_res = [linea.strip() for linea in resolucion_cruda.split('\n') if linea.strip()]
             resolucion = "\n\n".join(lineas_res)  # Formato limpio para React
         else:
             resolucion = "Análisis procesado correctamente."
@@ -101,6 +97,39 @@ REGLAS CRÍTICAS DE ESTILO:
     except Exception as e:
         print(f"❌ Error en OpenAI: {e}")
         return "CONFIANZA LIMITADA", f"Error de conexión. Detalle: {e}", "ciencia", f"Consulta Digital. ({ano_actual})."
+
+
+def obtener_repositorios_tematicos(query_limpia):
+    """Clasifica los repositorios según el tema de las palabras clave de la IA"""
+    q = query_limpia.lower()
+    
+    # 🧬 Medicina, Microbiología y Salud
+    if any(k in q for k in ["coli", "bacteria", "virus", "salud", "medicina", "fago", "ampicilina", "fármaco", "enfermedad"]):
+        return [
+            {"titulo": "PubMed / NCBI", "url": f"https://pubmed.ncbi.nlm.nih.gov/?term={query_limpia.replace(' ', '+')}", "snippet": "Base de datos biomédica internacional revisada por pares."},
+            {"titulo": "SciELO Salud Pública", "url": f"https://search.scielo.org/?q={query_limpia.replace(' ', '+')}", "snippet": "Revistas científicas de acceso abierto en ciencias de la salud."}
+        ]
+    
+    # 🌿 Medio Ambiente, Ecología y Clima
+    elif any(k in q for k in ["clima", "agua", "ambiente", "ecología", "bosque", "contaminación", "especie"]):
+        return [
+            {"titulo": "BioOne Complete", "url": f"https://bioone.org/search?term={query_limpia.replace(' ', '+')}", "snippet": "Investigación biológica, ecológica y de ciencias ambientales."},
+            {"titulo": "Redalyc Ciencias Naturales", "url": f"https://www.redalyc.org/busqueda.oa?q={query_limpia.replace(' ', '+')}", "snippet": "Red de revistas científicas de América Latina y el Caribe."}
+        ]
+        
+    # ⚖️ Derecho, Política y Ciencias Sociales
+    elif any(k in q for k in ["ley", "gobierno", "corrupción", "decreto", "política", "derecho", "social"]):
+        return [
+            {"titulo": "Dialnet Social", "url": f"https://dialnet.unirioja.es/buscar/documentos?querys.texto={query_limpia.replace(' ', '+')}", "snippet": "Portal de difusión científica en ciencias jurídicas y sociales."},
+            {"titulo": "CLACSO", "url": f"https://www.clacso.org.ar/biblioteca_virtual/", "snippet": "Red de ciencias sociales de América Latina."}
+        ]
+        
+    # 🔬 Multidisciplinario General (Por defecto)
+    else:
+        return [
+            {"titulo": "Google Académico", "url": f"https://scholar.google.es/scholar?q={query_limpia.replace(' ', '+')}", "snippet": "Buscador internacional de literatura académica y tesis."},
+            {"titulo": "CORE Research", "url": f"https://core.ac.uk/search?q={query_limpia.replace(' ', '+')}", "snippet": "Agregador mundial de artículos de investigación en acceso abierto."}
+        ]
 
 
 def procesar_consulta_dinamica(url_ingresada, texto_investigacion, pregunta_usuario):
@@ -113,21 +142,12 @@ def procesar_consulta_dinamica(url_ingresada, texto_investigacion, pregunta_usua
     )
 
     fuentes_vivas = []
-    fuentes_sugeridas = []
+    verbos_vacios = ["esta", "pagina", "mismo", "gobierno", "peru", "analizar", "quiero", "necesito", "sobre", "como", "sirve", "para", "buscar"]
+    palabras_clave = [w for w in re.findall(r"\b\w{4,15}\b", terminos_busqueda.lower()) if w not in verbos_vacios]
 
-    verbos_vacios = [
-        "esta", "pagina", "mismo", "gobierno", "peru", "analizar",
-        "quiero", "necesito", "sobre", "como", "sirve", "para", "buscar"
-    ]
-    palabras_clave = [
-        w for w in re.findall(r"\b\w{4,15}\b", terminos_busqueda.lower())
-        if w not in verbos_vacios
-    ]
+    query_final = " ".join(palabras_clave) if palabras_clave else terminos_busqueda
 
-    query_final = " ".join(
-        palabras_clave) if palabras_clave else terminos_busqueda
-
-    # Búsqueda en Google
+    # Búsqueda en Google (Fuentes de contraste)
     try:
         print(f"🔍 Ejecutando Google Search real para: {query_final}")
         enlaces = list(search(query_final, num_results=5, lang="es"))
@@ -148,19 +168,17 @@ def procesar_consulta_dinamica(url_ingresada, texto_investigacion, pregunta_usua
     except Exception as e:
         print(f"⚠️ Error o bloqueo temporal en Google Search: {e}")
 
+    # Fallback si Google Search falla
     if not fuentes_vivas:
         termino_url = query_final.replace(" ", "+")
         fuentes_vivas.append({
             "url": f"https://alicia.concytec.gob.pe/vufind/Search/Results?lookfor={termino_url}",
-            "titulo": f"Contraste Institucional: Repositorio ALICIA (CONCYTEC)",
+            "titulo": f"Contraste Institucional: Repositorio ALICIA",
             "snippet": f"Mapeo de contingencia científica activo para '{query_final.title()}'.",
         })
 
-    fuentes_sugeridas.append({
-        "url": f"https://scholar.google.es/scholar?q={query_final.replace(' ', '+')}",
-        "titulo": f"Google Académico: Literatura Científica",
-        "snippet": f"Filtro internacional de literatura científica para '{query_final.title()}'.",
-    })
+    # 🚀 AQUI LLAMAMOS A LA NUEVA FUNCIÓN DINÁMICA
+    fuentes_sugeridas = obtener_repositorios_tematicos(query_final)
 
     return estado, enfoque_respuesta, fuentes_vivas, fuentes_sugeridas, cita_apa
 
@@ -169,25 +187,19 @@ def procesar_consulta_dinamica(url_ingresada, texto_investigacion, pregunta_usua
 @app.route("/api/analizar", methods=["POST"])
 def analizar_api():
     try:
-        # Recibir JSON enviado por el frontend de React
         data = request.get_json() or {}
 
-        # Aceptamos tanto la nomenclatura en español como en inglés que genera Lovable
         url_input = data.get("url") or data.get("url_fuente") or ""
-        texto_input = data.get("fragmento") or data.get(
-            "texto_investigacion") or ""
-        pregunta_input = data.get("pregunta") or data.get(
-            "pregunta_usuario") or ""
+        texto_input = data.get("fragmento") or data.get("texto_investigacion") or ""
+        pregunta_input = data.get("pregunta") or data.get("pregunta_usuario") or ""
 
         if not url_input and not texto_input:
             return jsonify({"error": "Faltan parámetros obligatorios"}), 400
 
-        # Procesar con el motor dinámico
         estado, resolucion, fuentes_vivas, fuentes_sugeridas, cita_apa = procesar_consulta_dinamica(
             url_input, texto_input, pregunta_input
         )
 
-        # Retornamos la respuesta JSON estructurada para Lovable
         return jsonify({
             "estado": estado,
             "veredicto": estado,
