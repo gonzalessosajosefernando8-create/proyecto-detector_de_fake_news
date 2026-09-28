@@ -24,6 +24,17 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+# 🟢 ENDPOINT DE VERIFICACIÓN (Ruta principal para evitar el "Not Found" en Render)
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "sistema": "S.I.F.D. Backend API",
+        "estado": "Operativo 🚀",
+        "version": "1.0",
+        "mensaje": "El motor de inteligencia forense está en línea y esperando peticiones desde Lovable."
+    }), 200
+
+
 def analizar_con_inteligencia_artificial(url, texto_usuario, pregunta):
     ano_actual = datetime.now().year
 
@@ -177,7 +188,7 @@ def procesar_consulta_dinamica(url_ingresada, texto_investigacion, pregunta_usua
             "snippet": f"Mapeo de contingencia científica activo para '{query_final.title()}'.",
         })
 
-    # 🚀 AQUI LLAMAMOS A LA NUEVA FUNCIÓN DINÁMICA
+    # 🚀 Llamada a la función dinámica de repositorios
     fuentes_sugeridas = obtener_repositorios_tematicos(query_final)
 
     return estado, enfoque_respuesta, fuentes_vivas, fuentes_sugeridas, cita_apa
