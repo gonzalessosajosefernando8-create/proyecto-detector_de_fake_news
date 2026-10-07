@@ -4,6 +4,7 @@ textblob
 requests
 googlesearch-python
 gunicorn
-openai 
+openai
 python-dotenv
 flask-cors
+beautifulsoup4
