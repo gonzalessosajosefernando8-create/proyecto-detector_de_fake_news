@@ -77,7 +77,7 @@ REGLAS CRÍTICAS DE ESTILO:
                 {"role": "system", "content": prompt_sistema},
                 {"role": "user", "content": prompt_usuario}
             ],
-            temperature=0.3
+            temperature=1
         )
 
         respuesta_ia = response.choices[0].message.content
