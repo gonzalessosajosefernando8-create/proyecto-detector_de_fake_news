@@ -84,11 +84,12 @@ def extraer_bloque(etiqueta, texto, por_defecto=""):
     match = re.search(patron, texto, re.DOTALL | re.IGNORECASE)
     return match.group(1).strip() if match else por_defecto
 
-@app.route('/', methods=['POST', 'GET'])
-def analizar():
-    if request.method == 'GET':
-        return jsonify({"status": "Servidor S.I.F.D. activo."}), 200
+@app.route('/', methods=['GET'])
+def inicio():
+    return jsonify({"status": "Servidor S.I.F.D. activo."}), 200
 
+@app.route('/api/analizar', methods=['POST', 'OPTIONS'])
+def analizar():
     datos = request.get_json() or {}
     url = datos.get('url', '')
     texto = datos.get('texto', '')
